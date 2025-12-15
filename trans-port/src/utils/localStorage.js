@@ -52,6 +52,7 @@ export const STORAGE_KEYS = {
   USER: 'user',
   BOOKINGS: 'bookings',
   THEME: 'theme',
-  USERS: 'users' // For user registration
+  USERS: 'users', // For user registration
+  VEHICLES: 'vehicles' // Vehicle inventory
 };
 

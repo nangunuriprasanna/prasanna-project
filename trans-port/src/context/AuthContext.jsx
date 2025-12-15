@@ -99,12 +99,36 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updatePassword = (currentPassword, newPassword) => {
+    // Get all registered users
+    const users = storage.get(STORAGE_KEYS.USERS, []);
+    const userIndex = users.findIndex(u => u.id === user.id);
+    
+    if (userIndex === -1) {
+      return { success: false, message: 'User not found' };
+    }
+
+    const foundUser = users[userIndex];
+    
+    // Verify current password
+    if (foundUser.password !== currentPassword) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+
+    // Update password
+    users[userIndex] = { ...foundUser, password: newPassword };
+    storage.save(STORAGE_KEYS.USERS, users);
+
+    return { success: true, message: 'Password updated successfully' };
+  };
+
   const value = {
     user,
     login,
     register,
     logout,
     updateProfile,
+    updatePassword,
     loading,
     isAuthenticated: !!user
   };

@@ -4,14 +4,21 @@ import { useAuth } from '../context/AuthContext';
 import Loader from './Loader';
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, updatePassword } = useAuth();
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: ''
   });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [errors, setErrors] = useState({});
+  const [passwordErrors, setPasswordErrors] = useState({});
   const [alert, setAlert] = useState({ show: false, message: '', variant: '' });
+  const [passwordAlert, setPasswordAlert] = useState({ show: false, message: '', variant: '' });
 
   useEffect(() => {
     if (user) {
@@ -55,6 +62,39 @@ const Profile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const validatePassword = () => {
+    const newErrors = {};
+
+    if (!passwordData.currentPassword) {
+      newErrors.currentPassword = 'Current password is required. Please enter your current password.';
+    }
+
+    if (!passwordData.newPassword) {
+      newErrors.newPassword = 'New password is required. Please enter a new password.';
+    } else if (passwordData.newPassword.length < 6) {
+      newErrors.newPassword = `Password must be at least 6 characters long. You entered ${passwordData.newPassword.length} character${passwordData.newPassword.length !== 1 ? 's' : ''}. Please add ${6 - passwordData.newPassword.length} more character${6 - passwordData.newPassword.length > 1 ? 's' : ''}.`;
+    } else if (passwordData.newPassword.length > 128) {
+      newErrors.newPassword = 'Password is too long. Maximum 128 characters allowed.';
+    } else if (!/(?=.*[a-z])/.test(passwordData.newPassword)) {
+      newErrors.newPassword = 'Password should contain at least one lowercase letter for better security.';
+    } else if (!/(?=.*[A-Z])/.test(passwordData.newPassword)) {
+      newErrors.newPassword = 'Password should contain at least one uppercase letter for better security.';
+    } else if (!/(?=.*\d)/.test(passwordData.newPassword)) {
+      newErrors.newPassword = 'Password should contain at least one number for better security.';
+    } else if (passwordData.currentPassword === passwordData.newPassword) {
+      newErrors.newPassword = 'New password must be different from your current password.';
+    }
+
+    if (!passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password by entering it again in the confirm password field.';
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match. Please make sure both password fields contain the same password.';
+    }
+
+    setPasswordErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -69,14 +109,27 @@ const Profile = () => {
     }
   };
 
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (passwordErrors[name]) {
+      setPasswordErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!validate()) {
-      const errorMessages = Object.values(errors).join(' ');
       setAlert({
         show: true,
-        message: `Please fix the following errors: ${errorMessages}`,
+        message: 'Please fill all required fields correctly.',
         variant: 'danger'
       });
       
@@ -106,6 +159,57 @@ const Profile = () => {
         message: 'Profile updated successfully!',
         variant: 'success'
       });
+      setLoading(false);
+    }, 500);
+  };
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    
+    if (!validatePassword()) {
+      setPasswordAlert({
+        show: true,
+        message: 'Please fill all required fields correctly.',
+        variant: 'danger'
+      });
+      
+      // Scroll to first error field
+      const firstErrorField = Object.keys(passwordErrors)[0];
+      if (firstErrorField) {
+        const element = document.querySelector(`[name="${firstErrorField}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.focus();
+        }
+      }
+      return;
+    }
+
+    setLoading(true);
+
+    // Simulate update delay
+    setTimeout(() => {
+      const result = updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      
+      if (result.success) {
+        setPasswordAlert({
+          show: true,
+          message: result.message,
+          variant: 'success'
+        });
+        // Clear password fields on success
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        setPasswordAlert({
+          show: true,
+          message: result.message,
+          variant: 'danger'
+        });
+      }
       setLoading(false);
     }, 500);
   };
@@ -181,6 +285,72 @@ const Profile = () => {
 
                 <Button variant="primary" type="submit" className="w-100">
                   Update Profile
+                </Button>
+              </Form>
+            </Card.Body>
+          </Card>
+
+          <Card className="shadow-lg mt-4" style={{ borderRadius: '20px', border: 'none' }}>
+            <Card.Body className="p-4">
+              <h5 className="mb-4">🔒 Change Password</h5>
+              
+              {passwordAlert.show && (
+                <Alert variant={passwordAlert.variant} dismissible onClose={() => setPasswordAlert({ show: false })}>
+                  {passwordAlert.message}
+                </Alert>
+              )}
+
+              <Form onSubmit={handlePasswordSubmit}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Current Password <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your current password"
+                    isInvalid={!!passwordErrors.currentPassword}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {passwordErrors.currentPassword}
+                  </Form.Control.Feedback>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>New Password <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter your new password"
+                    isInvalid={!!passwordErrors.newPassword}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {passwordErrors.newPassword}
+                  </Form.Control.Feedback>
+                  <Form.Text className="text-muted">
+                    Password must be at least 6 characters long and contain uppercase, lowercase, and a number
+                  </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Confirm New Password <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    placeholder="Confirm your new password"
+                    isInvalid={!!passwordErrors.confirmPassword}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {passwordErrors.confirmPassword}
+                  </Form.Control.Feedback>
+                </Form.Group>
+
+                <Button variant="primary" type="submit" className="w-100">
+                  Update Password
                 </Button>
               </Form>
             </Card.Body>

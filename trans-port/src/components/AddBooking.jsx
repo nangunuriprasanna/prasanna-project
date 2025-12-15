@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Card, Form, Button, Alert, Row, Col } from 'react-bootstrap';
+import { Container, Card, Form, Button, Alert, Row, Col, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { storage, STORAGE_KEYS } from '../utils/localStorage';
+import { checkVehicleAvailability, getVehicleTypeLabel, getVehicleTypeIcon } from '../utils/vehicleInventory';
 import Loader from './Loader';
+import TransportIllustration from './TransportIllustration';
 
 const AddBooking = () => {
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,7 @@ const AddBooking = () => {
   });
   const [errors, setErrors] = useState({});
   const [alert, setAlert] = useState({ show: false, message: '', variant: '' });
+  const [vehicleAvailability, setVehicleAvailability] = useState({ available: [], counts: {}, total: 0 });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +31,28 @@ const AddBooking = () => {
       setLoading(false);
     }, 300);
   }, []);
+
+  // Update vehicle availability when route or time changes
+  useEffect(() => {
+    if (formData.origin && formData.destination && formData.bookingDate && formData.bookingTime) {
+      const existingBookings = storage.get(STORAGE_KEYS.BOOKINGS, []);
+      const availability = checkVehicleAvailability(
+        formData.origin,
+        formData.destination,
+        formData.bookingDate,
+        formData.bookingTime,
+        existingBookings
+      );
+      setVehicleAvailability(availability);
+      
+      // Clear vehicle type if it's no longer available
+      if (formData.vehicleType && !availability.counts[formData.vehicleType]) {
+        setFormData(prev => ({ ...prev, vehicleType: '' }));
+      }
+    } else {
+      setVehicleAvailability({ available: [], counts: {}, total: 0 });
+    }
+  }, [formData.origin, formData.destination, formData.bookingDate, formData.bookingTime]);
 
   const validate = (returnErrors = false) => {
     const newErrors = {};
@@ -98,6 +123,19 @@ const AddBooking = () => {
     // Vehicle type validation
     if (!formData.vehicleType) {
       newErrors.vehicleType = 'Vehicle type is required. Please select a vehicle type from the dropdown.';
+    } else if (formData.origin && formData.destination && formData.bookingDate && formData.bookingTime) {
+      // Check if selected vehicle type is available
+      const existingBookings = storage.get(STORAGE_KEYS.BOOKINGS, []);
+      const availability = checkVehicleAvailability(
+        formData.origin,
+        formData.destination,
+        formData.bookingDate,
+        formData.bookingTime,
+        existingBookings
+      );
+      if (!availability.counts[formData.vehicleType] || availability.counts[formData.vehicleType] === 0) {
+        newErrors.vehicleType = 'Selected vehicle type is not available for this route and time. Please select another vehicle type.';
+      }
     }
 
     // Passengers validation with vehicle type limits
@@ -201,15 +239,9 @@ const AddBooking = () => {
     
     const validationResult = validate(true);
     if (!validationResult.isValid) {
-      const errorCount = Object.keys(validationResult.errors).length;
-      const errorFields = Object.keys(validationResult.errors).map(field => {
-        const fieldName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        return fieldName;
-      }).join(', ');
-      
       setAlert({
         show: true,
-        message: `Please fix ${errorCount} error${errorCount > 1 ? 's' : ''} in the form: ${errorFields}. Please check the highlighted fields below.`,
+        message: 'Please fill all required fields correctly.',
         variant: 'danger'
       });
       
@@ -229,6 +261,19 @@ const AddBooking = () => {
 
     setLoading(true);
 
+    // Find an available vehicle of the selected type
+    const existingBookings = storage.get(STORAGE_KEYS.BOOKINGS, []);
+    const availability = checkVehicleAvailability(
+      formData.origin,
+      formData.destination,
+      formData.bookingDate,
+      formData.bookingTime,
+      existingBookings
+    );
+    
+    const availableVehicle = availability.available.find(v => v.type === formData.vehicleType);
+    const vehicleId = availableVehicle ? availableVehicle.id : null;
+
     // Create new booking (temporary, will be saved after payment)
     const newBooking = {
       id: Date.now().toString(),
@@ -237,6 +282,7 @@ const AddBooking = () => {
       bookingDate: formData.bookingDate,
       bookingTime: formData.bookingTime,
       vehicleType: formData.vehicleType,
+      vehicleId: vehicleId,
       passengers: parseInt(formData.passengers),
       contactName: formData.contactName.trim(),
       contactPhone: formData.contactPhone.trim(),
@@ -290,9 +336,24 @@ const AddBooking = () => {
 
   return (
     <Container>
-      <div className="hero-section mb-4">
-        <h1 className="text-white mb-2">📝 New Transport Booking</h1>
-        <p className="text-white mb-0">Fill in the details to book your ride</p>
+      <div className="hero-section mb-4" style={{ position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.1, fontSize: '8rem' }}>
+          📝
+        </div>
+        <div style={{ position: 'relative', zIndex: 1 }} className="d-flex justify-content-between align-items-center flex-wrap">
+          <div style={{ flex: 1 }}>
+            <h1 className="text-white mb-2">📝 New Transport Booking</h1>
+            <p className="text-white mb-2">Fill in the details to book your ride</p>
+            <div className="mt-2">
+              <p className="text-white" style={{ opacity: 0.9, fontStyle: 'italic', fontSize: '1rem' }}>
+                "Book now and travel with comfort and reliability"
+              </p>
+            </div>
+          </div>
+          <div style={{ marginLeft: '2rem' }}>
+            <TransportIllustration type="fleet" size="medium" />
+          </div>
+        </div>
       </div>
       <Row className="justify-content-center">
         <Col md={10} lg={9}>
@@ -320,6 +381,9 @@ const AddBooking = () => {
                       <Form.Control.Feedback type="invalid">
                         {errors.origin}
                       </Form.Control.Feedback>
+                      <Form.Text className="text-muted">
+                        <small>Examples: City Center, Airport, Station, Mall, Hotel, Hospital, University</small>
+                      </Form.Text>
                     </Form.Group>
                   </Col>
                   <Col md={6}>
@@ -336,6 +400,9 @@ const AddBooking = () => {
                       <Form.Control.Feedback type="invalid">
                         {errors.destination}
                       </Form.Control.Feedback>
+                      <Form.Text className="text-muted">
+                        <small>Examples: City Center, Airport, Station, Mall, Hotel, Hospital, University</small>
+                      </Form.Text>
                     </Form.Group>
                   </Col>
                 </Row>
@@ -371,6 +438,46 @@ const AddBooking = () => {
                       </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
+                </Row>
+
+                {/* Vehicle Availability Display */}
+                {formData.origin && formData.destination && formData.bookingDate && formData.bookingTime && (
+                  <Row className="mb-3">
+                    <Col>
+                      <Card className="bg-light" style={{ border: '2px solid #0d6efd' }}>
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-center flex-wrap mb-2">
+                            <h6 className="mb-0">
+                              <strong>Available Vehicles:</strong> 
+                              <Badge bg={vehicleAvailability.total > 0 ? 'success' : 'danger'} className="ms-2">
+                                {vehicleAvailability.total} {vehicleAvailability.total === 1 ? 'Vehicle' : 'Vehicles'}
+                              </Badge>
+                            </h6>
+                          </div>
+                          {vehicleAvailability.total > 0 ? (
+                            <div className="d-flex flex-wrap gap-2">
+                              {Object.entries(vehicleAvailability.counts).map(([type, count]) => (
+                                <Badge 
+                                  key={type} 
+                                  bg="primary" 
+                                  style={{ fontSize: '0.9rem', padding: '0.5rem 0.75rem' }}
+                                >
+                                  {getVehicleTypeIcon(type)} {getVehicleTypeLabel(type)}: {count}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <Alert variant="warning" className="mb-0 mt-2">
+                              <small>No vehicles available for this route and time. Please try a different route or time.</small>
+                            </Alert>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  </Row>
+                )}
+
+                <Row>
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Vehicle Type <span className="text-danger">*</span></Form.Label>
@@ -379,19 +486,51 @@ const AddBooking = () => {
                         value={formData.vehicleType}
                         onChange={handleChange}
                         isInvalid={!!errors.vehicleType}
+                        disabled={vehicleAvailability.total === 0 && formData.origin && formData.destination && formData.bookingDate && formData.bookingTime}
                       >
                         <option value="">Select Vehicle Type</option>
-                        <option value="motorcycle">🏍️ Motorcycle (1-2 passengers)</option>
-                        <option value="auto">🛺 Auto/Three-wheeler (1-4 passengers)</option>
-                        <option value="sedan">🚗 Sedan (1-5 passengers)</option>
-                        <option value="suv">🚙 SUV (1-8 passengers)</option>
-                        <option value="van">🚐 Van (1-15 passengers)</option>
-                        <option value="bus">🚌 Bus (1-50 passengers)</option>
-                        <option value="truck">🚚 Truck (Cargo)</option>
+                        {vehicleAvailability.counts.motorcycle > 0 && (
+                          <option value="motorcycle">🏍️ Motorcycle (1-2 passengers)</option>
+                        )}
+                        {vehicleAvailability.counts.auto > 0 && (
+                          <option value="auto">🛺 Auto/Three-wheeler (1-4 passengers)</option>
+                        )}
+                        {vehicleAvailability.counts.sedan > 0 && (
+                          <option value="sedan">🚗 Sedan (1-5 passengers)</option>
+                        )}
+                        {vehicleAvailability.counts.suv > 0 && (
+                          <option value="suv">🚙 SUV (1-8 passengers)</option>
+                        )}
+                        {vehicleAvailability.counts.van > 0 && (
+                          <option value="van">🚐 Van (1-15 passengers)</option>
+                        )}
+                        {vehicleAvailability.counts.bus > 0 && (
+                          <option value="bus">🚌 Bus (1-50 passengers)</option>
+                        )}
+                        {vehicleAvailability.counts.truck > 0 && (
+                          <option value="truck">🚚 Truck (Cargo)</option>
+                        )}
+                        {/* Show all options if availability not checked yet */}
+                        {!formData.origin || !formData.destination || !formData.bookingDate || !formData.bookingTime ? (
+                          <>
+                            <option value="motorcycle">🏍️ Motorcycle (1-2 passengers)</option>
+                            <option value="auto">🛺 Auto/Three-wheeler (1-4 passengers)</option>
+                            <option value="sedan">🚗 Sedan (1-5 passengers)</option>
+                            <option value="suv">🚙 SUV (1-8 passengers)</option>
+                            <option value="van">🚐 Van (1-15 passengers)</option>
+                            <option value="bus">🚌 Bus (1-50 passengers)</option>
+                            <option value="truck">🚚 Truck (Cargo)</option>
+                          </>
+                        ) : null}
                       </Form.Select>
                       <Form.Control.Feedback type="invalid">
                         {errors.vehicleType}
                       </Form.Control.Feedback>
+                      {formData.origin && formData.destination && formData.bookingDate && formData.bookingTime && vehicleAvailability.total === 0 && (
+                        <Form.Text className="text-danger">
+                          No vehicles available. Please select a different route or time.
+                        </Form.Text>
+                      )}
                     </Form.Group>
                   </Col>
                 </Row>

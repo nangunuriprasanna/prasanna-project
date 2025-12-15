@@ -2,6 +2,7 @@ import React from 'react';
 import { Navbar, Nav, Container } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import Logo from './Logo';
 
 const NavigationBar = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -19,7 +20,9 @@ const NavigationBar = () => {
   return (
     <Navbar bg="primary" variant="dark" expand="lg" className="mb-4">
       <Container>
-        <Navbar.Brand as={Link} to="/dashboard">🚐 Transport Booking</Navbar.Brand>
+        <Navbar.Brand as={Link} to="/dashboard" style={{ textDecoration: 'none' }}>
+          <Logo size="small" showText={true} />
+        </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">

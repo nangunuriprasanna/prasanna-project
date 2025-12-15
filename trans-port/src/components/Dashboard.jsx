@@ -3,6 +3,9 @@ import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { storage, STORAGE_KEYS } from '../utils/localStorage';
 import Loader from './Loader';
+import Testimonials from './Testimonials';
+import Features from './Features';
+import TransportIllustration from './TransportIllustration';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -133,13 +136,24 @@ const Dashboard = () => {
 
   return (
     <Container>
-      <div className="hero-section mb-4">
+      <div className="hero-section mb-4" style={{ position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.1, fontSize: '8rem' }}>
+          🚐
+        </div>
         <div className="d-flex justify-content-between align-items-center flex-wrap">
-          <div>
+          <div style={{ position: 'relative', zIndex: 1, flex: 1 }}>
             <h1 className="text-white mb-2">🚐 Transport Dashboard</h1>
-            <p className="text-white mb-0">Manage your bookings and track your rides</p>
+            <p className="text-white mb-2">Manage your bookings and track your rides</p>
+            <div className="mt-3">
+              <blockquote className="text-white" style={{ fontStyle: 'italic', opacity: 0.95, fontSize: '1.1rem', borderLeft: '3px solid white', paddingLeft: '1rem' }}>
+                "Your journey, our commitment to excellence"
+              </blockquote>
+            </div>
           </div>
-          <Button variant="light" size="lg" onClick={() => navigate('/add-booking')} className="mt-3 mt-md-0">
+          <div style={{ position: 'relative', zIndex: 1, marginLeft: '2rem' }}>
+            <TransportIllustration type="fleet" size="medium" />
+          </div>
+          <Button variant="light" size="lg" onClick={() => navigate('/add-booking')} className="mt-3 mt-md-0" style={{ position: 'relative', zIndex: 1 }}>
             ➕ New Booking
           </Button>
         </div>
@@ -213,6 +227,12 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Features Section */}
+      <Features />
+
+      {/* Testimonials Section */}
+      <Testimonials />
     </Container>
   );
 };

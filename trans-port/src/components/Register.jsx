@@ -3,6 +3,8 @@ import { Container, Card, Form, Button, Alert, Row, Col } from 'react-bootstrap'
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Loader from './Loader';
+import Logo from './Logo';
+import TransportIllustration from './TransportIllustration';
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
@@ -87,15 +89,9 @@ const Register = () => {
     e.preventDefault();
     
     if (!validate()) {
-      const errorCount = Object.keys(errors).length;
-      const errorFields = Object.keys(errors).map(field => {
-        const fieldName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        return fieldName;
-      }).join(', ');
-      
       setAlert({
         show: true,
-        message: `Please fix ${errorCount} error${errorCount > 1 ? 's' : ''} in the form: ${errorFields}. Please check the highlighted fields below.`,
+        message: 'Please fill all required fields correctly.',
         variant: 'danger'
       });
       
@@ -142,14 +138,28 @@ const Register = () => {
   }
 
   return (
-    <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh', padding: '2rem 0' }}>
-      <Container>
+    <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh', padding: '2rem 0', position: 'relative', overflow: 'hidden' }}>
+      {/* Decorative background elements */}
+      <div style={{ position: 'absolute', top: '-50px', left: '-50px', width: '300px', height: '300px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', zIndex: 0 }}></div>
+      <div style={{ position: 'absolute', bottom: '-100px', right: '-100px', width: '400px', height: '400px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%', zIndex: 0 }}></div>
+      
+      <Container style={{ position: 'relative', zIndex: 1 }}>
         <Row className="justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
+          <Col md={5} lg={4} className="mb-4 mb-md-0">
+            <div className="text-center">
+              <TransportIllustration type="bus" size="large" />
+            </div>
+          </Col>
           <Col md={6} lg={5}>
             <div className="text-center mb-4">
-              <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🚐</div>
+              <div className="mb-3" style={{ display: 'flex', justifyContent: 'center' }}>
+                <Logo size="large" showText={true} className="text-white" />
+              </div>
               <h2 className="text-white mb-2" style={{ fontWeight: 700 }}>Join Us Today!</h2>
-              <p className="text-white" style={{ opacity: 0.9 }}>Create your account and start booking</p>
+              <p className="text-white mb-3" style={{ opacity: 0.9 }}>Create your account and start booking</p>
+              <div className="text-white" style={{ opacity: 0.8, fontStyle: 'italic' }}>
+                <p className="mb-0" style={{ fontSize: '0.95rem' }}>"Start your journey with us today"</p>
+              </div>
             </div>
             <Card className="shadow-lg" style={{ borderRadius: '20px', border: 'none' }}>
               <Card.Body className="p-4">

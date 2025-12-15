@@ -171,15 +171,9 @@ const Payment = () => {
     e.preventDefault();
     
     if (!validate()) {
-      const errorCount = Object.keys(errors).length;
-      const errorFields = Object.keys(errors).map(field => {
-        const fieldName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        return fieldName;
-      }).join(', ');
-      
       setAlert({
         show: true,
-        message: `Please fix ${errorCount} error${errorCount > 1 ? 's' : ''} in the payment form: ${errorFields}. Please check the highlighted fields below.`,
+        message: 'Please fill all required fields correctly.',
         variant: 'danger'
       });
       
